@@ -1,0 +1,237 @@
+SELECT "a_date" AS "Month",
+  "Dept",
+  "Region",
+  "Country",
+  "Gender",
+  "Manager Flag",
+  "Age Band",
+  "Tenure Band",
+  "CT" AS "Avg for Month"
+FROM
+  (SELECT "a_date",
+    HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC     AS "Dept",
+    HR_LOC_REGION_MAP.LIST_VALUE_LONG_DESC  AS "Region",
+    HR_LOC_COUNTRY_MAP.LIST_VALUE_LONG_DESC AS "Country",
+    PEO.SEX                                 AS "Gender",
+    CASE
+      WHEN ASMT.MANAGER_FLAG = 'Y'
+      THEN 'Y'
+      ELSE 'N'
+    END AS "Manager Flag",
+    CASE
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) < 30.0000
+      THEN 'Band 1: < 30 Years'
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 30.0000 AND 39.9999
+      THEN 'Band 2: 30-40 Years'
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 40.0000 AND 49.9999
+      THEN 'Band 3:40-50 Years'
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) > 50.0000
+      THEN 'Band 4: > 50 Years'
+      ELSE 'No DOB'
+    END AS "Age Band",
+    /*This is the case statement I'm having trouble with.  For some reason I'm disqualifying
+  around 140 people when I implement this case statement.*/
+    CASE
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END <= 0.5000
+      THEN '<= 6 months'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 0.5001 AND 1.0000
+      THEN 'Between 6 months and 1 Year'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 1.0001 AND 2.0000
+      THEN 'Between 1 and 2 Years'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 2.0001 AND 4.0000
+      THEN 'Between 2 and 4 Years'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 4.0001 AND 7.0000
+      THEN 'Between 4 and 7 Years'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END >= 7.0001
+      THEN '> 7 Years'
+      ELSE NULL
+    END                        AS "Tenure Band",
+    COUNT(peo.EMPLOYEE_NUMBER) AS "CT"
+  FROM RHEDW_STG.STG_EBS_PER_ALL_PPL_F peo,
+    RHEDW_STG.STG_EBS_PER_ALL_ASSIGNMENTS_F ASMT,
+    RHEDW_STG.STG_EBS_HR_LOCATIONS_ALL LOC,
+    RHEDW_STG.STG_EBS_HR_ALL_ORGN_UNT ORG,
+    RHEDW_STG.STG_EBS_PER_JOBS JOBS,
+    RHEDW_STG.STG_EBS_PER_PERSON_TYPES TYPES,
+    RHEDW.DW_GENERIC_LKP HR_CC_DEPT_MAP,
+    RHEDW.DW_GENERIC_LKP HR_LOC_REGION_MAP,
+    RHEDW.DW_GENERIC_LKP HR_LOC_COUNTRY_MAP,
+    RHEDW_STG.STG_EBS_PER_PERIODS_OF_SERVICE SVC,
+    (SELECT DISTINCT '01-'
+      || SUBSTR(add_months(DATE '2013-01-01',-1) + LEVEL, 4, 6) AS "a_date" -- Start date of period
+    FROM dual
+      CONNECT BY LEVEL <= add_months(DATE '2015-11-11',+2) - add_months(DATE '2013-01-01',-1)
+    )
+  WHERE peo.current_employee_flag = 'Y'
+  AND "a_date" BETWEEN asmt.effective_start_date AND asmt.effective_end_date
+  AND ASMT.PRIMARY_FLAG              = 'Y'
+  AND PEO.STG_DEL_FLG               <> 'Y'
+  AND ASMT.STG_DEL_FLG              <> 'Y'
+  AND LOC.STG_DEL_FLG               <> 'Y'
+  AND SVC.STG_DEL_FLG               <> 'Y'
+  AND JOBS.STG_DEL_FLG              <> 'Y'
+  AND SVC.STG_DEL_FLG               <> 'Y'
+  AND HR_CC_DEPT_MAP.DM_DEL_FLG     <> 'Y'
+  AND HR_LOC_REGION_MAP.DM_DEL_FLG  <> 'Y'
+  AND HR_LOC_COUNTRY_MAP.DM_DEL_FLG <> 'Y'
+  AND ASMT.EMPLOYMENT_CATEGORY      IN('FR','PR')
+  AND PEO.PERSON_ID                  = ASMT.PERSON_ID
+  AND ASMT.PERIOD_OF_SERVICE_ID      = SVC.PERIOD_OF_SERVICE_ID
+  AND ASMT.LOCATION_ID               = LOC.LOCATION_ID
+  AND ASMT.ORGANIZATION_ID           = ORG.ORGANIZATION_ID
+  AND PER.PERSON_TYPE_ID             = TYPES.PERSON_TYPE_ID
+  AND (TYPES.SYSTEM_PERSON_TYPE     IN('EMP')
+  OR TYPES.SYSTEM_PERSON_TYPE       IN('EX_EMP'))
+  AND ASMT.JOB_ID                    = JOBS.JOB_ID
+  AND JOBS.NAME NOT                 IN('Unclassified.Intern.Intern.INTRN','Unclassified.Contractor.Unpaid Intern.999')
+    /*Grouping by Department*/
+  AND HR_CC_DEPT_MAP.SUBJECT_AREA_NM IN('HR')
+  AND HR_CC_DEPT_MAP.LIST_NM         IN('HR_CC_DEPT_MAP')
+  AND HR_CC_DEPT_MAP.EXPRTN_DT        = TO_DATE('99991231', 'yyyymmdd')
+  AND HR_CC_DEPT_MAP.LIST_VALUE_CD(+) = SUBSTR(ORG.NAME, -3)
+    --+++++++++++++++++++++++++++++
+    /*Grouping by Region*/
+  AND HR_LOC_REGION_MAP.SUBJECT_AREA_NM IN('HR')
+  AND HR_LOC_REGION_MAP.LIST_NM         IN('HR_LOC_REGION_MAP')
+  AND HR_LOC_REGION_MAP.EXPRTN_DT        = TO_DATE('99991231', 'yyyymmdd')
+  AND LOC.LOCATION_CODE                  =HR_LOC_REGION_MAP.LIST_VALUE_CD(+)
+    --+++++++++++++++++++++++++++++
+    /*Grouping by Country*/
+  AND HR_LOC_COUNTRY_MAP.SUBJECT_AREA_NM IN('HR')
+  AND HR_LOC_COUNTRY_MAP.LIST_NM         IN('HR_LOC_COUNTRY_MAP')
+  AND HR_LOC_COUNTRY_MAP.EXPRTN_DT        = TO_DATE('99991231', 'yyyymmdd')
+  AND LOC.LOCATION_CODE                   =HR_LOC_COUNTRY_MAP.LIST_VALUE_CD(+)
+    --+++++++++++++++++++++++++++++
+  AND "a_date" BETWEEN peo.effective_start_date AND peo.EFFECTIVE_END_DATE
+  GROUP BY "a_date",
+    HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC,
+    HR_LOC_REGION_MAP.LIST_VALUE_LONG_DESC,
+    HR_LOC_COUNTRY_MAP.LIST_VALUE_LONG_DESC,
+    PEO.SEX,
+    CASE
+      WHEN ASMT.MANAGER_FLAG = 'Y'
+      THEN 'Y'
+      ELSE 'N'
+    END,
+    CASE
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) < 30.0000
+      THEN 'Band 1: < 30 Years'
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 30.0000 AND 39.9999
+      THEN 'Band 2: 30-40 Years'
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 40.0000 AND 49.9999
+      THEN 'Band 3:40-50 Years'
+      WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) > 50.0000
+      THEN 'Band 4: > 50 Years'
+      ELSE 'No DOB'
+    END ,
+    CASE
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END <= 0.5000
+      THEN '<= 6 months'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 0.5001 AND 1.0000
+      THEN 'Between 6 months and 1 Year'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 1.0001 AND 2.0000
+      THEN 'Between 1 and 2 Years'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 2.0001 AND 4.0000
+      THEN 'Between 2 and 4 Years'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END BETWEEN 4.0001 AND 7.0000
+      THEN 'Between 4 and 7 Years'
+      WHEN
+        CASE
+          WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+          WHEN SVC.DATE_START IS NOT NULL
+          THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
+          ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        END >= 7.0001
+      THEN '> 7 Years'
+      ELSE NULL
+    END
+  ORDER BY "a_date"
+  )
+GROUP BY "a_date",
+  "Dept",
+  "Region",
+  "Gender",
+  "Country",
+  "Manager Flag",
+  "Age Band",
+  "Tenure Band",
+  "CT"
+ORDER BY "a_date";
