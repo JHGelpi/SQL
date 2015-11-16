@@ -1,6 +1,47 @@
 --Termination counts by month
-SELECT SUBSTR(SVC.actual_termination_date, 4, 6) AS "Month",
-  'SEPARATIONS'                                  AS "Data Flag",
+SELECT '01-'|| SUBSTR(SVC.actual_termination_date, 4, 6) AS "Month",
+  'Separations'                                  AS "Data Flag",
+  CASE 
+  WHEN 
+    CASE
+      WHEN SVC.LEAVING_REASON IN('RH_RS')
+      THEN 'Voluntary'
+      WHEN SVC.LEAVING_REASON IN('T', 'TC')
+      THEN 'Involuntary'
+      WHEN SVC.LEAVING_REASON IN('D')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'Voluntary' AND 
+      CASE
+      WHEN SVC.ATTRIBUTE2 IN('R13', 'R14', 'R15')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'UNSPECIFIED' 
+  THEN 'Voluntary'
+  WHEN 
+      CASE
+      WHEN SVC.LEAVING_REASON IN('RH_RS')
+      THEN 'Voluntary'
+      WHEN SVC.LEAVING_REASON IN('T', 'TC')
+      THEN 'Involuntary'
+      WHEN SVC.LEAVING_REASON IN('D')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+    END = 'Involuntary' AND 
+      CASE
+      WHEN SVC.ATTRIBUTE2 IN('R13', 'R14', 'R15')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'UNSPECIFIED'
+  THEN 'Involuntary'
+  WHEN 
+      CASE
+      WHEN SVC.ATTRIBUTE2 IN('R13', 'R14', 'R15')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'Other' 
+  THEN 'Other' 
+END AS "Separation Flag",
   HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC            AS "Dept by CC",
   HR_LOC_REGION_MAP.LIST_VALUE_LONG_DESC         AS "Region",
   HR_LOC_COUNTRY_MAP.LIST_VALUE_LONG_DESC        AS "Country",
@@ -74,41 +115,23 @@ SELECT SUBSTR(SVC.actual_termination_date, 4, 6) AS "Month",
     THEN '> 7 Years'
     ELSE NULL
   END AS "Tenure Band",
-  CASE
-    WHEN initcap(HR_SEPARATION_MAP.LVL1_CD_DESC_TXT) IN('Resigned')
-    AND SVC.ATTRIBUTE2 NOT            IN('R14')
-    AND SVC.ATTRIBUTE2 NOT            IN('R15')
-    THEN 'Voluntary'
-    WHEN SVC.ATTRIBUTE2              = 'R14'
-    OR SVC.ATTRIBUTE2               <>'R15'
-    OR initcap(HR_SEPARATION_MAP.LVL1_CD_DESC_TXT) IN('Deceased', 'Retirement')
-    THEN 'Other'
-    ELSE 'Involuntary'
-END                        AS "Separation Flag",
-  COUNT(DISTINCT PEO.PERSON_ID) AS "CT"
+  COUNT(DISTINCT PEO.PERSON_ID) AS "Count"
 FROM RHEDW_STG.STG_EBS_PER_ALL_PPL_F PEO,
   RHEDW_STG.STG_EBS_PER_PERIODS_OF_SERVICE SVC,
   RHEDW_STG.STG_EBS_PER_ALL_ASSIGNMENTS_F ASMT,
-  --RHEDW.HR_EBS_EMP_ASSGNMNT_F ASMT2,
   RHEDW_STG.STG_EBS_HR_LOCATIONS_ALL LOC,
   RHEDW_STG.STG_EBS_HR_ALL_ORGN_UNT ORG_D,
-  --RHEDW_STG.STG_EBS_PER_PERSON_TYPES PERTYPES,
   RHEDW_STG.STG_EBS_PER_JOBS JOBS,
   RHEDW.DW_GENERIC_LKP HR_CC_DEPT_MAP,
   RHEDW.DW_GENERIC_LKP HR_LOC_REGION_MAP,
-  RHEDW.DW_GENERIC_LKP HR_LOC_COUNTRY_MAP,
-  RHEDW.DM_GNRC_CODE_D HR_SEPARATION_MAP
+  RHEDW.DW_GENERIC_LKP HR_LOC_COUNTRY_MAP
 WHERE SVC.actual_termination_date BETWEEN PEO.EFFECTIVE_START_DATE AND PEO.EFFECTIVE_END_DATE
 AND SVC.actual_termination_date BETWEEN '01-mar-2010' AND '01-nov-2015'
 AND SVC.PERSON_ID      = PEO.PERSON_ID
---AND PEO.PERSON_TYPE_ID = PERTYPES.PERSON_TYPE_ID
 AND SVC.actual_termination_date BETWEEN asmt.EFFECTIVE_START_DATE AND asmt.EFFECTIVE_END_DATE
---AND ASMT.PERSON_ID                  = ASMT2.HR_EBS_PERSON_DID
 AND ASMT.JOB_ID                     = JOBS.JOB_ID
 AND JOBS.NAME NOT                  IN('Unclassified.Intern.Intern.INTRN','Unclassified.Contractor.Unpaid Intern.999')
 AND ASMT.EMPLOYMENT_CATEGORY       IN('FR','PR')
---AND ASMT.EFFECTIVE_START_DATE       = ASMT2.ASSGNMNT_START_DT
---AND ASMT2.PRIMARY_FLG               = 'Y'
 AND ASMT.PRIMARY_FLAG               = 'Y'
 AND PEO.STG_DEL_FLG                <> 'Y'
 AND ASMT.STG_DEL_FLG               <> 'Y'
@@ -119,12 +142,8 @@ AND SVC.STG_DEL_FLG (+)                <> 'Y'
 AND HR_CC_DEPT_MAP.DELETED_FLG(+)     <> 'Y'
 AND HR_LOC_REGION_MAP.DELETED_FLG(+)  <> 'Y'
 AND HR_LOC_COUNTRY_MAP.DELETED_FLG(+) <> 'Y'
-AND HR_SEPARATION_MAP.DM_DEL_FLG(+)   <> 'Y'
---AND ASMT2.LEAVING_REASON_CD         = HR_SEPARATION_MAP.LVL1_CD(+)
-AND HR_SEPARATION_MAP.CD_CTGRY(+)     IN('LEAV_REAS')
+AND SVC.LEAVING_REASON IN('RH_RS', 'T', 'TC', 'D')
 AND PEO.PERSON_ID                   = ASMT.PERSON_ID
-/*AND (PERTYPES.SYSTEM_PERSON_TYPE   IN('EMP')
-OR PERTYPES.SYSTEM_PERSON_TYPE     IN('EX_EMP'))*/
 AND ASMT.ASSIGNMENT_TYPE = 'E'
 AND ASMT.LOCATION_ID                = LOC.LOCATION_ID
 AND ASMT.ORGANIZATION_ID            = ORG_D.ORGANIZATION_ID
@@ -217,26 +236,44 @@ GROUP BY SUBSTR(SVC.actual_termination_date, 4, 6),
     ELSE NULL
   END,
   ASMT.MANAGER_FLAG,
-  CASE
-    WHEN initcap(HR_SEPARATION_MAP.LVL1_CD_DESC_TXT) IN('Resigned')
-    AND SVC.ATTRIBUTE2 NOT            IN('R14')
-    AND SVC.ATTRIBUTE2 NOT            IN('R15')
-    THEN 'Voluntary'
-    WHEN SVC.ATTRIBUTE2              = 'R14'
-    OR SVC.ATTRIBUTE2               <>'R15'
-    OR initcap(HR_SEPARATION_MAP.LVL1_CD_DESC_TXT) IN('Deceased', 'Retirement')
-    THEN 'Other'
-    ELSE 'Involuntary'
-END
-ORDER BY
-  CASE
-    WHEN initcap(HR_SEPARATION_MAP.LVL1_CD_DESC_TXT) IN('Resigned')
-    AND SVC.ATTRIBUTE2 NOT            IN('R14')
-    AND SVC.ATTRIBUTE2 NOT            IN('R15')
-    THEN 'Voluntary'
-    WHEN SVC.ATTRIBUTE2              = 'R14'
-    OR SVC.ATTRIBUTE2               <>'R15'
-    OR initcap(HR_SEPARATION_MAP.LVL1_CD_DESC_TXT) IN('Deceased', 'Retirement')
-    THEN 'Other'
-    ELSE 'Involuntary'
+  CASE 
+  WHEN 
+    CASE
+      WHEN SVC.LEAVING_REASON IN('RH_RS')
+      THEN 'Voluntary'
+      WHEN SVC.LEAVING_REASON IN('T', 'TC')
+      THEN 'Involuntary'
+      WHEN SVC.LEAVING_REASON IN('D')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'Voluntary' AND 
+      CASE
+      WHEN SVC.ATTRIBUTE2 IN('R13', 'R14', 'R15')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'UNSPECIFIED' 
+  THEN 'Voluntary'
+  WHEN 
+      CASE
+      WHEN SVC.LEAVING_REASON IN('RH_RS')
+      THEN 'Voluntary'
+      WHEN SVC.LEAVING_REASON IN('T', 'TC')
+      THEN 'Involuntary'
+      WHEN SVC.LEAVING_REASON IN('D')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+    END = 'Involuntary' AND 
+      CASE
+      WHEN SVC.ATTRIBUTE2 IN('R13', 'R14', 'R15')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'UNSPECIFIED'
+  THEN 'Involuntary'
+  WHEN 
+      CASE
+      WHEN SVC.ATTRIBUTE2 IN('R13', 'R14', 'R15')
+      THEN 'Other'
+      ELSE 'UNSPECIFIED'
+      END = 'Other' 
+  THEN 'Other' 
 END;
