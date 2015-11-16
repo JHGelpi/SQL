@@ -1,16 +1,18 @@
 --Active by Month
 SELECT "a_date" AS "Month",
-  "Dept",
+'Headcount' AS "Data Flag",
+'' AS "Separation Flag",
+  "Dept by CC",
   "Region",
   "Country",
   "Gender",
   "Manager Flag",
   "Age Band",
   "Tenure Band",
-  "CT" AS "Avg for Month"
+  "CT" AS "Count"
 FROM
   (SELECT "a_date",
-    HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC     AS "Dept",
+    HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC     AS "Dept by CC",
     HR_LOC_REGION_MAP.LIST_VALUE_LONG_DESC  AS "Region",
     HR_LOC_COUNTRY_MAP.LIST_VALUE_LONG_DESC AS "Country",
     PEO.SEX                                 AS "Gender",
@@ -93,15 +95,14 @@ FROM
     RHEDW_STG.STG_EBS_HR_LOCATIONS_ALL LOC,
     RHEDW_STG.STG_EBS_HR_ALL_ORGN_UNT ORG,
     RHEDW_STG.STG_EBS_PER_JOBS JOBS,
-    --RHEDW_STG.STG_EBS_PER_PERSON_TYPES TYPES,
     RHEDW.DW_GENERIC_LKP HR_CC_DEPT_MAP,
     RHEDW.DW_GENERIC_LKP HR_LOC_REGION_MAP,
     RHEDW.DW_GENERIC_LKP HR_LOC_COUNTRY_MAP,
     RHEDW_STG.STG_EBS_PER_PERIODS_OF_SERVICE SVC,
     (SELECT DISTINCT '01-'
-      || SUBSTR(add_months(DATE '2010-03-01',-1) + LEVEL, 4, 6) AS "a_date" -- Start date of period
+      || SUBSTR(add_months(DATE '2010-03-01',-1) + LEVEL, 4, 6) AS "a_date" -- Start date
     FROM dual
-      CONNECT BY LEVEL <= add_months(DATE '2015-11-01',+2) - add_months(DATE '2010-03-01',-1)
+      CONNECT BY LEVEL <= add_months(DATE '2015-11-01',+2) - add_months(DATE '2010-03-01',-1) -- End date; start date
     )
   WHERE peo.current_employee_flag = 'Y'
   AND "a_date" BETWEEN asmt.effective_start_date AND asmt.effective_end_date
@@ -111,7 +112,6 @@ FROM
   AND LOC.STG_DEL_FLG               <> 'Y'
   AND SVC.STG_DEL_FLG(+)               <> 'Y'
   AND JOBS.STG_DEL_FLG              <> 'Y'
-  --AND SVC.STG_DEL_FLG               <> 'Y'
   AND HR_CC_DEPT_MAP.DELETED_FLG(+)     <> 'Y'
   AND HR_LOC_REGION_MAP.DELETED_FLG(+)  <> 'Y'
   AND HR_LOC_COUNTRY_MAP.DELETED_FLG(+) <> 'Y'
@@ -120,10 +120,7 @@ FROM
   AND ASMT.PERIOD_OF_SERVICE_ID      = SVC.PERIOD_OF_SERVICE_ID(+)
   AND ASMT.LOCATION_ID               = LOC.LOCATION_ID
   AND ASMT.ORGANIZATION_ID           = ORG.ORGANIZATION_ID
-  --AND PEO.PERSON_TYPE_ID             = TYPES.PERSON_TYPE_ID
   AND ASMT.ASSIGNMENT_TYPE = 'E'
-  /*AND (TYPES.SYSTEM_PERSON_TYPE     IN('EMP')
-  OR TYPES.SYSTEM_PERSON_TYPE       IN('EX_EMP'))*/
   AND ASMT.JOB_ID                    = JOBS.JOB_ID
   AND JOBS.NAME NOT                 IN('Unclassified.Intern.Intern.INTRN','Unclassified.Contractor.Unpaid Intern.999')
     /*Grouping by Department*/
@@ -226,7 +223,7 @@ FROM
   ORDER BY "a_date"
   )
 GROUP BY "a_date",
-  "Dept",
+  "Dept by CC",
   "Region",
   "Gender",
   "Country",
