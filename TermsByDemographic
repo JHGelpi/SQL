@@ -159,7 +159,7 @@ SELECT DISTINCT
       || 'D'
     WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GLS')
     THEN 'GLS'
-    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GPS')
+    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GPS', 'SDM')
     THEN 'Consulting'
     WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GSS')
     THEN 'CEE'
@@ -171,13 +171,13 @@ SELECT DISTINCT
     THEN 'Operations'
     WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('People')
     THEN 'People'
-    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('Sales', 'SDM')
+    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('Sales')
     THEN 'Sales'
     ELSE 'UNSPECIFIED'
   END                                     AS "Dept by CC",
   HR_LOC_REGION_MAP.LIST_VALUE_LONG_DESC  AS "Region",
   HR_LOC_COUNTRY_MAP.LIST_VALUE_LONG_DESC AS "Country",
-  LOC.TOWN_OR_CITY                        AS "City",
+  --LOC.TOWN_OR_CITY                        AS "City",
   LOC.LOCATION_CODE                       AS "Location",
   PEO.SEX                                 AS "Gender",
   CASE
@@ -186,13 +186,13 @@ SELECT DISTINCT
     ELSE 'N'
   END AS "Manager Flag",
   CASE
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) < 30.0000
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) < 30.0000
     THEN '< 30 Years'
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 30.0000 AND 39.9999
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 30.0000 AND 39.9999
     THEN '30-40 Years'
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 40.0000 AND 49.9999
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 40.0000 AND 49.9999
     THEN '40-50 Years'
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) > 50.0000
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) > 50.0000
     THEN '> 50 Years'
     ELSE 'No DOB'
   END AS "Age Band",
@@ -200,136 +200,60 @@ SELECT DISTINCT
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END <= 0.5000
     THEN '0-6 months'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 0.5001 AND 1.0000
     THEN '6-12 Months'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 1.0001 AND 2.0000
     THEN '1-2 Years'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 2.0001 AND 4.0000
     THEN '2-4 Years'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 4.0001 AND 7.0000
     THEN '4-7 Years'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END >= 7.0001
     THEN '7+ Years'
     ELSE NULL
   END AS "Tenure Band",
-  --Add Tenure in Role (0-6 months, 6-12 months, 1-2 years, 2-4 years, 4-7 years, 7+ years)
-  --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  /*CASE
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) <= 0.5000
-    THEN '0-6 Months'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 0.5001 AND 1.0000
-    THEN '6-12 Months'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 1.0001 AND 2.0000
-    THEN '1-2 Years'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 2.0001 AND 4.0000
-    THEN '2-4 Years'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 4.0001 AND 7.0000
-    THEN '4-7 Years'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) > 7.0000
-    THEN '7+ Years'
-    ELSE
-      CASE
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END <= 0.5000
-        THEN '0-6 months'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 0.5001 AND 1.0000
-        THEN '6-12 Months'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 1.0001 AND 2.0000
-        THEN '1-2 Years'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 2.0001 AND 4.0000
-        THEN '2-4 Years'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 4.0001 AND 7.0000
-        THEN '4-7 Years'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END >= 7.0001
-        THEN '7+ Years'
-        ELSE NULL
-      END
-  END AS "Tenure in Job",*/
-  --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  SUBSTR(JOBS.NAME,instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', 1)+1)+1, (instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', 1)+1)+1))-(instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', 1)+1)+1)) AS "Role",
-  COUNT(DISTINCT PEO.PERSON_ID)                                                                                                                                                                             AS "Count"
+  COUNT(DISTINCT PEO.PERSON_ID) AS "Count"
 FROM RHEDW_STG.STG_EBS_PER_ALL_PPL_F PEO,
   RHEDW_STG.STG_EBS_PER_PERIODS_OF_SERVICE SVC,
   RHEDW_STG.STG_EBS_PER_ALL_ASSIGNMENTS_F ASMT,
@@ -339,41 +263,8 @@ FROM RHEDW_STG.STG_EBS_PER_ALL_PPL_F PEO,
   RHEDW.DW_GENERIC_LKP HR_CC_DEPT_MAP,
   RHEDW.DW_GENERIC_LKP HR_LOC_REGION_MAP,
   RHEDW.DW_GENERIC_LKP HR_LOC_COUNTRY_MAP
-  --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  /*(
-  SELECT DISTINCT MAX(a.ASSGNMNT_START_DT) AS "Job_Date",
-  a.HR_EBS_PERSON_DID,
-  a.HR_EBS_JOB_DID,
-  a.HR_EBS_EMP_ASSGNMT_FID
-  FROM RHEDW.HR_EBS_EMP_ASSGNMNT_F a
-  WHERE a.HR_EBS_JOB_DID <> a.HR_EBS_PREV_JOB_DID
-  GROUP BY a.ASSGNMNT_START_DT,
-  a.HR_EBS_PERSON_DID,
-  a.HR_EBS_JOB_DID,
-  a.HR_EBS_EMP_ASSGNMT_FID
-  ) F*/
-  --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  --++++++++++++++++++++++++++++++++++++++++++++++++++++
-  /*(
-  SELECT DISTINCT MAX(A.ASSGNMNT_START_DT) AS "Job_Date",
-    A.HR_EBS_PERSON_DID,
-    A.HR_EBS_JOB_DID,
-    A.HR_EBS_EMP_ASSGNMT_FID
-  FROM RHEDW.HR_EBS_EMP_ASSGNMNT_F A
-  WHERE A.HR_EBS_JOB_DID <> A.HR_EBS_PREV_JOB_DID
-  GROUP BY A.HR_EBS_PERSON_DID,
-    A.HR_EBS_JOB_DID,
-    A.HR_EBS_EMP_ASSGNMT_FID
-  ) F*/
-  --++++++++++++++++++++++++++++++++++++++++++++++++++++
 WHERE SVC.actual_termination_date BETWEEN PEO.EFFECTIVE_START_DATE AND PEO.EFFECTIVE_END_DATE
-  --++++++++++++++++++++++++++++++++++++++++++++++++++++
-/*AND F.HR_EBS_PERSON_DID(+)      = ASMT.PERSON_ID
-AND F.HR_EBS_JOB_DID(+)         = ASMT.JOB_ID
-AND F."Job_Date"(+)            <= ASMT.EFFECTIVE_START_DATE
-AND F.HR_EBS_EMP_ASSGNMT_FID(+) = ASMT.ASSIGNMENT_ID*/
-  --++++++++++++++++++++++++++++++++++++++++++++++++++++
-AND SVC.actual_termination_date BETWEEN '01-mar-2010' AND '01-nov-2015'
+AND SVC.actual_termination_date BETWEEN '01-mar-2010' AND '01-dec-2015'
 AND SVC.PERSON_ID = PEO.PERSON_ID
 AND SVC.actual_termination_date BETWEEN ASMT.EFFECTIVE_START_DATE AND ASMT.EFFECTIVE_END_DATE
 AND ASMT.JOB_ID                        = JOBS.JOB_ID
@@ -525,7 +416,7 @@ GROUP BY
       || 'D'
     WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GLS')
     THEN 'GLS'
-    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GPS')
+    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GPS', 'SDM')
     THEN 'Consulting'
     WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('GSS')
     THEN 'CEE'
@@ -537,23 +428,23 @@ GROUP BY
     THEN 'Operations'
     WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('People')
     THEN 'People'
-    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('Sales', 'SDM')
+    WHEN HR_CC_DEPT_MAP.LIST_VALUE_LONG_DESC IN('Sales')
     THEN 'Sales'
     ELSE 'UNSPECIFIED'
   END,
   HR_LOC_REGION_MAP.LIST_VALUE_LONG_DESC,
   HR_LOC_COUNTRY_MAP.LIST_VALUE_LONG_DESC,
-  LOC.TOWN_OR_CITY,
+  --LOC.TOWN_OR_CITY,
   LOC.LOCATION_CODE,
   PEO.SEX,
   CASE
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) < 30.0000
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) < 30.0000
     THEN '< 30 Years'
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 30.0000 AND 39.9999
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 30.0000 AND 39.9999
     THEN '30-40 Years'
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 40.0000 AND 49.9999
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) BETWEEN 40.0000 AND 49.9999
     THEN '40-50 Years'
-    WHEN ROUND((SYSDATE - PEO.DATE_OF_BIRTH)/365.25,2) > 50.0000
+    WHEN ROUND((to_date(SVC.actual_termination_date) - PEO.DATE_OF_BIRTH)/365.25,2) > 50.0000
     THEN '> 50 Years'
     ELSE 'No DOB'
   END,
@@ -561,131 +452,59 @@ GROUP BY
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END <= 0.5000
     THEN '0-6 months'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 0.5001 AND 1.0000
     THEN '6-12 Months'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 1.0001 AND 2.0000
     THEN '1-2 Years'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 2.0001 AND 4.0000
     THEN '2-4 Years'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END BETWEEN 4.0001 AND 7.0000
     THEN '4-7 Years'
     WHEN
       CASE
         WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.ADJUSTED_SVC_DATE)/365.25,4)
         WHEN SVC.DATE_START IS NOT NULL
-        THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-        ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
+        THEN ROUND((to_date(SVC.actual_termination_date) - SVC.DATE_START)/365.25,4)
+        ELSE ROUND((to_date(SVC.actual_termination_date) - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
       END >= 7.0001
     THEN '7+ Years'
     ELSE NULL
   END,
-  /*CASE
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) <= 0.5000
-    THEN '0-6 Months'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 0.5001 AND 1.0000
-    THEN '6-12 Months'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 1.0001 AND 2.0000
-    THEN '1-2 Years'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 2.0001 AND 4.0000
-    THEN '2-4 Years'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) BETWEEN 4.0001 AND 7.0000
-    THEN '4-7 Years'
-    WHEN (ROUND((SYSDATE - "Job_Date")/365.25, 4)) > 7.0000
-    THEN '7+ Years'
-    ELSE
-      CASE
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END <= 0.5000
-        THEN '0-6 months'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 0.5001 AND 1.0000
-        THEN '6-12 Months'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 1.0001 AND 2.0000
-        THEN '1-2 Years'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 2.0001 AND 4.0000
-        THEN '2-4 Years'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END BETWEEN 4.0001 AND 7.0000
-        THEN '4-7 Years'
-        WHEN
-          CASE
-            WHEN SVC.ADJUSTED_SVC_DATE IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.ADJUSTED_SVC_DATE)/365.25,4)
-            WHEN SVC.DATE_START IS NOT NULL
-            THEN ROUND((SYSDATE - SVC.DATE_START)/365.25,4)
-            ELSE ROUND((SYSDATE - PEO.ORIGINAL_DATE_OF_HIRE)/365.25,4)
-          END >= 7.0001
-        THEN '7+ Years'
-        ELSE NULL
-      END
-  END,*/
   CASE
     WHEN ASMT.MANAGER_FLAG = 'Y'
     THEN 'Y'
@@ -733,5 +552,5 @@ GROUP BY
         ELSE 'UNSPECIFIED'
       END = 'Other'
     THEN '4-Other'
-  END,
-  SUBSTR(JOBS.NAME,instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', 1)+1)+1, (instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', 1)+1)+1))-(instr(JOBS.NAME, '.', instr(JOBS.NAME, '.', 1)+1)+1));
+  END
+;
